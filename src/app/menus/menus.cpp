@@ -112,9 +112,12 @@ void menus::actions()
 		if (ImGui::SliderInt("##Volume", &audio::volume, 0, 100))
 		{
 			audio::set_volume(audio::volume);
+			static ini_t* config = ini_load(settings::config_file.c_str());
+			ini_set(config, "core", "volume", std::to_string(audio::volume).c_str());
+			ini_save(config, settings::config_file.c_str());
 		}
 
-		if (ImGui::Button("Skip"))
+		if (ImGui::Button("Skip") && audio::playing)
 		{
 			audio::stop(0);
 			audio::play_next_song();

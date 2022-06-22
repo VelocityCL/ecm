@@ -21,7 +21,18 @@ void settings::update()
 	if (fs::exists(settings::config_file))
 	{
 		config = ini_load(&settings::config_file[0]);
+
+		if (strcmp(ini_get(config, "core", "version"), VERSION))
+		{
+			fs::del(settings::config_file);
+			settings::update();
+			return;
+		}
+
+
 		std::string config_string = ini_tostring(config);
+
+		audio::volume = std::stoi(ini_get(config, "core", "volume"));
 
 		audio::playlist_name = ini_get(config, "core", "playlist");
 		audio::playlist_dir = audio::playlist_name;
@@ -51,10 +62,13 @@ void settings::update()
 	}
 	else if (!fs::exists(settings::config_file))
 	{
-		std::string ini_default =
+
+		std::string ini_default = logger::va(
 			"[core]\n"
-			"playlist = \"Music\"\n\n"
-			"[trax]\n";
+			"playlist = \"Music\"\n"
+			"volume = \"100\"\n"
+			"version = \"%s\"\n"
+			"[trax]\n", VERSION);
 
 		audio::playlist_name = "Music";
 		audio::playlist_dir = audio::playlist_name;

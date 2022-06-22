@@ -40,52 +40,45 @@ void audio::init()
 
 void audio::update()
 {
-	std::thread([] {
-		while (true)
+	global::state = game_state;
+
+	std::uint32_t state = BASS_ChannelIsActive(audio::chan[0]);
+
+	switch (state)
+	{
+	case BASS_ACTIVE_STOPPED:
+		audio::playing = false;
+		break;
+	}
+
+	if (!audio::paused && !audio::playing)
+	{
+		audio::play_next_song();
+	}
+
+	//Setup for channel crossfading
+	switch (global::state)
+	{
+		//Frontend
+	case GameFlowState::LoadingFrontend:
+	case GameFlowState::InFrontend:
+		if(audio::playlist_files[audio::playlist_order[audio::current_song_index]].second == "IG")
 		{
-			global::state = game_state;
-
-			std::uint32_t state = BASS_ChannelIsActive(audio::chan[0]);
-
-			switch (state)
-			{
-			case BASS_ACTIVE_STOPPED:
-				audio::playing = false;
-				break;
-			}
-
-			if (!audio::paused && !audio::playing)
-			{
-				audio::play_next_song();
-			}
-
-			//Setup for channel crossfading
-			switch (global::state)
-			{
-				//Frontend
-			case GameFlowState::LoadingFrontend:
-			case GameFlowState::InFrontend:
-				if(audio::playlist_files[audio::playlist_order[audio::current_song_index]].second == "IG")
-				{
-					audio::stop(0);
-					audio::play_next_song();
-				}
-				break;
-
-				//In-game
-			case GameFlowState::UnloadingFrontend:
-			case GameFlowState::Racing:
-				if (audio::playlist_files[audio::playlist_order[audio::current_song_index]].second == "FE")
-				{
-					audio::stop(0);
-					audio::play_next_song();
-				}
-				break;
-			}
-
-			std::this_thread::sleep_for(128ms);
+			audio::stop(0);
+			audio::play_next_song();
 		}
-	}).detach();
+		break;
+
+		//In-game
+	case GameFlowState::UnloadingFrontend:
+	case GameFlowState::Racing:
+		if (audio::playlist_files[audio::playlist_order[audio::current_song_index]].second == "FE")
+		{
+			audio::stop(0);
+			audio::play_next_song();
+		}
+		break;
+	}
 }
 
 void audio::play_file(const std::string& file, int channel)
@@ -99,6 +92,7 @@ void audio::play_file(const std::string& file, int channel)
 void audio::stop(int channel)
 {
 	audio::paused = false;
+	audio::playing = false;
 
 	BASS_StreamFree(audio::chan[channel]);
 	audio::chan[channel] = 0;
@@ -224,7 +218,7 @@ bool audio::paused = false;
 bool audio::playing = false;
 std::int32_t audio::req;
 std::int32_t audio::chan[2];
-std::int32_t audio::volume = 25;
+std::int32_t audio::volume = 50;
 playing_t audio::currently_playing = {"N/A"};
 std::string audio::playlist_name = "Music";
 std::string audio::playlist_dir = "Music";
