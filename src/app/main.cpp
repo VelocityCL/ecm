@@ -38,6 +38,23 @@ __declspec(naked) void sys_init()
 	}
 }
 
+void __declspec(naked) NFSU2_MainLoop()
+{
+	static constexpr auto bGetTicker__Fv = 0x0043BDF0;
+
+	__asm
+	{
+		call bGetTicker__Fv
+
+		pushad;
+		call audio::update;
+		popad;
+
+		push 0x005811E9;
+		retn;
+	}
+}
+
 static void(* sub_00537980_)(int a2, char* a3, int a4);
 void sub_00537980(int a2, char* a3, int a4)
 {
@@ -85,7 +102,18 @@ void init()
 		//Wait for sys init stub
 		hook::jump(0x0057EDA3, sys_init);
 
+		hook::jump(0x005811E4, NFSU2_MainLoop);
+
 		MH_CreateHook((void*)0x00537980, sub_00537980, (void**)&sub_00537980_);
+		break;
+	case game_t::UNIVERSAL:
+		std::thread([] {
+			while (!global::shutdown)
+			{
+				audio::update();
+				std::this_thread::sleep_for(128ms);
+			}
+		});
 		break;
 	}
 
@@ -187,8 +215,10 @@ DWORD WINAPI OnAttachImpl(LPVOID lpParameter)
 	ShowWindow(GetConsoleWindow(), 0);
 #endif
 
+	global::game = game_t::NFSU2;
 
-	int found = -1;
+
+	/*int found = -1;
 	for (int i = 0; i < global::game_bins.size(); ++i)
 	{
 		if (fs::exists(global::game_bins[i]))
@@ -207,7 +237,7 @@ DWORD WINAPI OnAttachImpl(LPVOID lpParameter)
 	{
 		global::game = (game_t)found;
 		logger::log_info(logger::va("Game = %i", global::game));
-	}
+	}*/
 
 	init();
 	return 0;
